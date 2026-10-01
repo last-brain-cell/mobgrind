@@ -63,16 +63,23 @@ jobs:
             echo "No macOS signing secrets — producing an UNSIGNED build."
           fi
 
-          ditto -c -k --keepParent dist/MobGrind.app MobGrind-macOS.zip
+          # Package a drag-to-Applications disk image.
+          STAGE="$RUNNER_TEMP/dmg"
+          rm -rf "$STAGE"; mkdir -p "$STAGE"
+          cp -R dist/MobGrind.app "$STAGE/MobGrind.app"
+          ln -s /Applications "$STAGE/Applications"
+          hdiutil create -volname "MobGrind" -srcfolder "$STAGE" -ov -format UDZO MobGrind-macOS.dmg
+
+          if [ -n "${MAC_CERT_P12_BASE64:-}" ]; then
+            codesign --force --timestamp --sign "$MAC_SIGN_IDENTITY" MobGrind-macOS.dmg
+          fi
 
           if [ -n "${AC_KEY_P8_BASE64:-}" ]; then
             echo "Notarizing…"
             echo "$AC_KEY_P8_BASE64" | base64 --decode > "$RUNNER_TEMP/ac_key.p8"
-            xcrun notarytool submit MobGrind-macOS.zip \
+            xcrun notarytool submit MobGrind-macOS.dmg \
               --key "$RUNNER_TEMP/ac_key.p8" --key-id "$AC_KEY_ID" --issuer "$AC_ISSUER_ID" --wait
-            xcrun stapler staple dist/MobGrind.app      # staple the ticket into the .app
-            rm MobGrind-macOS.zip
-            ditto -c -k --keepParent dist/MobGrind.app MobGrind-macOS.zip   # re-zip stapled app
+            xcrun stapler staple MobGrind-macOS.dmg     # staple the ticket into the .dmg
           else
             echo "No App Store Connect key — skipping notarization."
           fi
@@ -108,5 +115,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            MobGrind-macOS.zip
+            MobGrind-macOS.dmg
             MobGrind-Windows.exe

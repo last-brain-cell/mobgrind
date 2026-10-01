@@ -80,9 +80,9 @@
       and stops itself if you die.</p>
 
     <div class="downloads">
-      <a class="btn" id="dl-mac" href="https://github.com/last-brain-cell/mobgrind/releases/latest/download/MobGrind-macOS.zip">
+      <a class="btn" id="dl-mac" href="https://github.com/last-brain-cell/mobgrind/releases/latest/download/MobGrind-macOS.dmg">
         <span class="ic">🍎</span>
-        <span><b>Download for macOS</b><span>.app · Apple Silicon/Intel</span></span>
+        <span><b>Download for macOS</b><span>.dmg · drag to Applications</span></span>
       </a>
       <a class="btn" id="dl-win" href="https://github.com/last-brain-cell/mobgrind/releases/latest/download/MobGrind-Windows.exe">
         <span class="ic">🪟</span>
@@ -112,8 +112,9 @@
     <div class="steps">
       <div class="os-block" id="help-mac">
         <h3>macOS</h3>
-        <p>Unzip and run it once to clear Gatekeeper (it's unsigned):</p>
-        <p><code>xattr -dr com.apple.quarantine MobGrind.app</code></p>
+        <p>Open the <code>.dmg</code> and drag <b>MobGrind</b> into Applications. If it's an
+          unsigned build, clear Gatekeeper once:</p>
+        <p><code>xattr -dr com.apple.quarantine /Applications/MobGrind.app</code></p>
         <p>…or double-click, then <b>System Settings → Privacy &amp; Security → “Open Anyway”</b>.
           On first Start or Calibrate, macOS asks for <b>Accessibility</b> and <b>Screen Recording</b> —
           grant both and relaunch.</p>

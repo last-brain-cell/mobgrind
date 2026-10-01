@@ -11,12 +11,13 @@ hungry and to stop if you die.
 ## Download
 
 Grab the latest build from the [**Releases**](../../releases/latest) page —
-`MobGrind-macOS.zip` or `MobGrind-Windows.exe`. No Python, no cloning.
+`MobGrind-macOS.dmg` or `MobGrind-Windows.exe`. No Python, no cloning.
 
-- **macOS:** unzip, then run once to clear Gatekeeper:
-  `xattr -dr com.apple.quarantine MobGrind.app` (or System Settings → Privacy &
-  Security → "Open Anyway"). First launch asks for Accessibility + Screen
-  Recording — grant both and relaunch.
+- **macOS:** open the `.dmg`, drag MobGrind into Applications. On an unsigned
+  build, clear Gatekeeper once:
+  `xattr -dr com.apple.quarantine /Applications/MobGrind.app` (or System Settings
+  → Privacy & Security → "Open Anyway"). First launch asks for Accessibility +
+  Screen Recording — grant both and relaunch.
 - **Windows:** run the `.exe`. SmartScreen may warn on the unsigned build — "More
   info" → "Run anyway".
 
