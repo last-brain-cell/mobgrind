@@ -1,0 +1,48 @@
+name: Build and release
+
+# Push a tag like v1.0.0 to build both binaries and attach them to a Release.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch: {}   # also lets you run it by hand from the Actions tab
+
+permissions:
+  contents: write         # needed to create/upload the Release
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt pyinstaller
+
+      - name: Build macOS .app
+        if: runner.os == 'macOS'
+        run: |
+          pyinstaller --noconfirm --name SpiderAFK --windowed --onedir \
+            --hidden-import pynput.keyboard._darwin --hidden-import pynput.mouse._darwin \
+            spider_afk_app.py
+          ditto -c -k --keepParent dist/SpiderAFK.app SpiderAFK-macOS.zip
+
+      - name: Build Windows .exe
+        if: runner.os == 'Windows'
+        run: |
+          pyinstaller --noconfirm --name SpiderAFK --windowed --onefile `
+            --hidden-import pynput.keyboard._win32 --hidden-import pynput.mouse._win32 `
+            spider_afk_app.py
+          Copy-Item dist/SpiderAFK.exe SpiderAFK-Windows.exe
+
+      - name: Attach to Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            SpiderAFK-macOS.zip
+            SpiderAFK-Windows.exe

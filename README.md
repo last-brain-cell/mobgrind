@@ -7,6 +7,18 @@ you're actually hungry and to stop if you die.
 
 > Most servers ban auto-clickers. Use it on your own world or where it's allowed.
 
+## Download
+
+Grab the latest build from the [**Releases**](../../releases/latest) page —
+`SpiderAFK-macOS.zip` or `SpiderAFK-Windows.exe`. No Python, no cloning.
+
+- **macOS:** unzip, then run once to clear Gatekeeper:
+  `xattr -dr com.apple.quarantine SpiderAFK.app` (or System Settings → Privacy &
+  Security → "Open Anyway"). First launch asks for Accessibility + Screen
+  Recording — grant both and relaunch.
+- **Windows:** run the `.exe`. SmartScreen may warn on the unsigned build — "More
+  info" → "Run anyway".
+
 ## Run from source
 
 ```
