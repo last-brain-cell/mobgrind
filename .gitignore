@@ -6,3 +6,4 @@ dist/
 mobgrind_calib.json
 .venv/
 .idea/
+mobgrind_settings.json

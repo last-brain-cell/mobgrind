@@ -27,7 +27,13 @@ import time
 
 import pyautogui
 
-CALIB_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mobgrind_calib.json")
+_HERE = os.path.dirname(os.path.abspath(__file__))
+CALIB_FILE = os.path.join(_HERE, "mobgrind_calib.json")
+SETTINGS_FILE = os.path.join(_HERE, "mobgrind_settings.json")
+
+# Knobs the tray UI can change (and persist). run()/eat()/etc. read these as
+# module globals each cycle, so setting them here takes effect live.
+TUNABLES = ("CLICK_EVERY", "JITTER", "SCROLL_DIR", "EAT_HOLD", "START_DELAY", "HUNGER_DISTANCE")
 
 # --- tuning knobs ---
 CLICK_EVERY = 6.0        # base seconds between attacks
@@ -90,6 +96,27 @@ def save_calib(hunger_xy, hunger_full, center_xy):
     with open(CALIB_FILE, "w") as f:
         json.dump(calib, f, indent=2)
     return calib
+
+
+def load_settings():
+    """Overlay any saved tunable values onto the module globals."""
+    try:
+        with open(SETTINGS_FILE) as f:
+            saved = json.load(f)
+    except FileNotFoundError:
+        return
+    for k, v in saved.items():
+        if k in TUNABLES:
+            globals()[k] = v
+
+
+def set_value(name, value):
+    """Change one tunable and persist all of them."""
+    if name not in TUNABLES:
+        raise KeyError(name)
+    globals()[name] = value
+    with open(SETTINGS_FILE, "w") as f:
+        json.dump({k: globals()[k] for k in TUNABLES}, f, indent=2)
 
 
 def looks_dead(center_xy):
@@ -181,6 +208,7 @@ def start_hotkeys():
 
 
 def main():
+    load_settings()
     calib = load_calib()
     if not calib:
         print("No calibration found — eating on a timer and skipping death detection.")

@@ -47,6 +47,7 @@ class MobGrindApp:
         self.running = False
         self.paused = False
         self.busy = False  # calibrating
+        engine.load_settings()
         self.icon = pystray.Icon(
             "mobgrind",
             icon=make_icon(IDLE),
@@ -59,9 +60,42 @@ class MobGrindApp:
                 pystray.MenuItem("Calibrate", self.on_calibrate,
                                  enabled=lambda i: not self.running and not self.busy),
                 pystray.Menu.SEPARATOR,
+                pystray.MenuItem("Settings", self._settings_menu()),
+                pystray.Menu.SEPARATOR,
                 pystray.MenuItem("Quit", self.on_quit),
             ),
         )
+
+    # --- settings submenu (native radio groups; changes apply live and persist) ---
+    def _settings_menu(self):
+        def choices(attr, options):
+            def item(label, val):
+                def action(icon, it):
+                    self._set(attr, val)
+                def checked(it):
+                    return getattr(engine, attr) == val
+                return pystray.MenuItem(label, action, checked=checked, radio=True)
+            return pystray.Menu(*[item(lbl, v) for lbl, v in options])
+
+        return pystray.Menu(
+            pystray.MenuItem("Attack interval", choices("CLICK_EVERY",
+                [("4s", 4.0), ("5s", 5.0), ("6s", 6.0), ("7s", 7.0), ("8s", 8.0), ("10s", 10.0)])),
+            pystray.MenuItem("Timing jitter", choices("JITTER",
+                [("Off", 0.0), ("+/-0.3s", 0.3), ("+/-0.6s", 0.6), ("+/-1.0s", 1.0)])),
+            pystray.MenuItem("Eat hold", choices("EAT_HOLD",
+                [("2s", 2.0), ("3s", 3.0), ("4s", 4.0), ("5s", 5.0), ("6s", 6.0)])),
+            pystray.MenuItem("Start delay", choices("START_DELAY",
+                [("5s", 5.0), ("10s", 10.0), ("15s", 15.0)])),
+            pystray.MenuItem("Eat sensitivity", choices("HUNGER_DISTANCE",
+                [("Low", 80), ("Medium", 60), ("High", 40)])),
+            pystray.MenuItem("Reverse sword scroll",
+                             lambda icon, it: self._set("SCROLL_DIR", -engine.SCROLL_DIR),
+                             checked=lambda it: engine.SCROLL_DIR == 1),
+        )
+
+    def _set(self, attr, value):
+        engine.set_value(attr, value)
+        self.icon.update_menu()
 
     # --- helpers ---
     def notify(self, msg):
