@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MobGrind — AFK mob farming for Minecraft</title>
+<meta name="description" content="A tray app that AFK-farms any Minecraft mob spawner: jittered attacks, rotates your swords, eats only when hungry, and stops when you die. macOS and Windows.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#10140f; --panel:#1a211733; --ink:#e8efe3; --muted:#9bb08f;
+    --accent:#5ac85a; --accent-ink:#0b1409; --line:#2c3a28; --warn:#e8b44a;
+    --maxw:960px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:
+      radial-gradient(900px 500px at 80% -10%, #1d2a18 0, transparent 60%),
+      radial-gradient(700px 400px at 0% 0%, #17231a 0, transparent 55%), var(--bg);
+    color:var(--ink); font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px}
+  header.hero{text-align:center; padding:72px 20px 40px}
+  .logo{font-size:clamp(44px,9vw,76px); line-height:1}
+  h1{font-family:"Press Start 2P",monospace; font-size:clamp(26px,6vw,46px);
+     margin:.4em 0 .1em; letter-spacing:1px; color:#fff}
+  .tag{color:var(--muted); font-size:clamp(16px,2.4vw,20px); max-width:620px; margin:14px auto 0}
+  .ver{color:var(--muted); font-size:13px; margin-top:8px}
+
+  .downloads{display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin:34px 0 6px}
+  .btn{
+    display:flex; align-items:center; gap:12px; text-decoration:none;
+    background:var(--panel); border:1px solid var(--line); color:var(--ink);
+    padding:14px 20px; border-radius:12px; min-width:230px; transition:.15s;
+  }
+  .btn:hover{border-color:var(--accent); transform:translateY(-2px)}
+  .btn .ic{font-size:26px}
+  .btn b{display:block; font-size:16px}
+  .btn span{display:block; color:var(--muted); font-size:13px}
+  .btn.primary{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+  .btn.primary span{color:#0b1409cc}
+  .btn.primary .pill{background:#0b140922; color:var(--accent-ink)}
+  .pill{font-size:11px; padding:2px 8px; border-radius:999px; background:#5ac85a22; color:var(--accent); margin-left:auto}
+
+  section{padding:30px 0}
+  h2{font-family:"Press Start 2P",monospace; font-size:16px; color:#fff; margin:0 0 20px}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px}
+  .card h3{margin:0 0 6px; font-size:16px}
+  .card p{margin:0; color:var(--muted); font-size:14px}
+  .card .e{font-size:22px}
+
+  .steps{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:20px}
+  .steps h3{margin:0 0 6px}
+  .steps code{background:#0d130b; border:1px solid var(--line); padding:2px 7px; border-radius:6px;
+    font-size:13px; color:#cfe6c2; word-break:break-all}
+  .steps p{color:var(--muted); font-size:14px}
+  .os-block{display:none}
+  .os-block.show{display:block}
+
+  .note{border:1px solid #4a3c15; background:#2a2310; color:#f0dca6; border-radius:12px;
+    padding:16px 18px; font-size:14px}
+  .note b{color:var(--warn)}
+
+  footer{text-align:center; color:var(--muted); font-size:13px; padding:40px 20px 60px}
+  footer a{color:var(--accent)}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <div class="logo">⚔️</div>
+    <h1>MobGrind</h1>
+    <p class="tag">AFK XP-farming for any Minecraft mob spawner. It attacks on a jittered
+      timer, rotates through your swords so they wear evenly, eats only when you're hungry,
+      and stops itself if you die.</p>
+
+    <div class="downloads">
+      <a class="btn" id="dl-mac" href="https://github.com/last-brain-cell/mobgrind/releases/latest/download/MobGrind-macOS.zip">
+        <span class="ic">🍎</span>
+        <span><b>Download for macOS</b><span>.app · Apple Silicon/Intel</span></span>
+      </a>
+      <a class="btn" id="dl-win" href="https://github.com/last-brain-cell/mobgrind/releases/latest/download/MobGrind-Windows.exe">
+        <span class="ic">🪟</span>
+        <span><b>Download for Windows</b><span>.exe · 64-bit</span></span>
+      </a>
+    </div>
+    <p class="ver">Latest release · free & open source ·
+      <a href="https://github.com/last-brain-cell/mobgrind" style="color:var(--muted)">view on GitHub</a></p>
+  </div>
+</header>
+
+<main class="wrap">
+  <section>
+    <h2>What it does</h2>
+    <div class="grid">
+      <div class="card"><div class="e">🗡️</div><h3>Sword rotation</h3><p>Scrolls one hotbar slot after every swing, so all 9 swords share the durability instead of grinding one to dust.</p></div>
+      <div class="card"><div class="e">🍗</div><h3>Eats when hungry</h3><p>Reads your hunger bar and only eats off-hand food when it actually drops — not on a blind timer.</p></div>
+      <div class="card"><div class="e">💀</div><h3>Stops on death</h3><p>Watches for the death screen and shuts down, so a bad session doesn't swing at nothing for hours.</p></div>
+      <div class="card"><div class="e">🎲</div><h3>Human-ish timing</h3><p>Every attack interval wobbles a little, so it's less robotic and less likely to desync.</p></div>
+      <div class="card"><div class="e">🧭</div><h3>Lives in your tray</h3><p>A menu-bar / system-tray icon with Start, Pause, Calibrate and Quit. No terminal needed.</p></div>
+      <div class="card"><div class="e">🖥️</div><h3>Mac &amp; Windows</h3><p>One download per platform. Nothing to install — no Python, no setup.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Getting started</h2>
+    <div class="steps">
+      <div class="os-block" id="help-mac">
+        <h3>macOS</h3>
+        <p>Unzip and run it once to clear Gatekeeper (it's unsigned):</p>
+        <p><code>xattr -dr com.apple.quarantine MobGrind.app</code></p>
+        <p>…or double-click, then <b>System Settings → Privacy &amp; Security → “Open Anyway”</b>.
+          On first Start or Calibrate, macOS asks for <b>Accessibility</b> and <b>Screen Recording</b> —
+          grant both and relaunch.</p>
+      </div>
+      <div class="os-block" id="help-win">
+        <h3>Windows</h3>
+        <p>Run the <code>.exe</code>. SmartScreen may warn on the unsigned build —
+          click <b>More info → Run anyway</b>. No extra permissions needed.</p>
+      </div>
+      <p style="margin-top:14px">Then open the tray icon and hit <b>Calibrate</b> once — hover your
+        leftmost hunger haunch, then the screen center. That teaches it your HUD so the eat-when-hungry
+        and death detection work. Start the macro, tab into Minecraft, and go AFK.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="note">
+      <b>Play fair.</b> Most multiplayer servers ban auto-clickers and AFK macros — using this on them
+      can get you banned. Keep it to your own worlds, single-player, or servers that explicitly allow it.
+    </div>
+  </section>
+</main>
+
+<footer>
+  MobGrind · built for lazy miners · <a href="https://github.com/last-brain-cell/mobgrind">GitHub</a>
+</footer>
+
+<script>
+  // Highlight the visitor's OS and surface its instructions.
+  (function(){
+    var ua = navigator.userAgent || "";
+    var isWin = /Windows|Win64|Win32/i.test(ua);
+    var isMac = /Macintosh|Mac OS X/i.test(ua) && !/iPhone|iPad/i.test(ua);
+    var mac = document.getElementById('dl-mac'), win = document.getElementById('dl-win');
+    function mark(btn){ btn.classList.add('primary'); btn.insertAdjacentHTML('beforeend','<span class="pill">detected</span>'); }
+    function help(id){ document.getElementById(id).classList.add('show'); }
+    if (isWin){ mark(win); win.parentNode.insertBefore(win, mac); help('help-win'); help('help-mac'); }
+    else if (isMac){ mark(mac); help('help-mac'); help('help-win'); }
+    else { help('help-mac'); help('help-win'); }  // unknown: show everything
+  })();
+</script>
+</body>
+</html>
