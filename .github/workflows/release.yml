@@ -1,6 +1,9 @@
 name: Build and release
 
 # Push a tag like v1.0.0 to build both binaries and attach them to a Release.
+# Code signing + notarization happen automatically IF the relevant secrets are
+# set (see SIGNING.md). With no secrets, it still builds working unsigned
+# binaries, so the pipeline never breaks while you're getting certs sorted.
 on:
   push:
     tags: ["v*"]
@@ -23,20 +26,81 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements.txt pyinstaller
 
-      - name: Build macOS .app
+      # ---------------- macOS: build, sign (Developer ID), notarize, staple ----------------
+      - name: Build, sign & notarize macOS .app
         if: runner.os == 'macOS'
+        env:
+          MAC_CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+          MAC_CERT_PASSWORD:   ${{ secrets.MACOS_CERT_PASSWORD }}
+          MAC_SIGN_IDENTITY:   ${{ secrets.MACOS_SIGN_IDENTITY }}
+          AC_KEY_ID:           ${{ secrets.AC_API_KEY_ID }}
+          AC_ISSUER_ID:        ${{ secrets.AC_API_ISSUER_ID }}
+          AC_KEY_P8_BASE64:    ${{ secrets.AC_API_KEY_P8_BASE64 }}
         run: |
+          set -euo pipefail
           pyinstaller --noconfirm --name MobGrind --windowed --onedir \
             --hidden-import pynput.keyboard._darwin --hidden-import pynput.mouse._darwin \
             mobgrind_app.py
+
+          if [ -n "${MAC_CERT_P12_BASE64:-}" ]; then
+            echo "Signing with Developer ID…"
+            KEYCHAIN="$RUNNER_TEMP/build.keychain"
+            KPASS="$(uuidgen)"
+            security create-keychain -p "$KPASS" "$KEYCHAIN"
+            security set-keychain-settings -lut 21600 "$KEYCHAIN"
+            security unlock-keychain -p "$KPASS" "$KEYCHAIN"
+            echo "$MAC_CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+            security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$MAC_CERT_PASSWORD" -T /usr/bin/codesign
+            security list-keychains -d user -s "$KEYCHAIN" login.keychain
+            security set-key-partition-list -S apple-tool:,apple: -s -k "$KPASS" "$KEYCHAIN" >/dev/null
+            # Hardened runtime is required for notarization; the entitlement lets the
+            # PyInstaller-bundled (unsigned-by-Apple) Python dylibs load.
+            codesign --force --options runtime --timestamp --deep \
+              --entitlements packaging/entitlements.plist \
+              --sign "$MAC_SIGN_IDENTITY" dist/MobGrind.app
+            codesign --verify --deep --strict --verbose=2 dist/MobGrind.app
+          else
+            echo "No macOS signing secrets — producing an UNSIGNED build."
+          fi
+
           ditto -c -k --keepParent dist/MobGrind.app MobGrind-macOS.zip
 
-      - name: Build Windows .exe
+          if [ -n "${AC_KEY_P8_BASE64:-}" ]; then
+            echo "Notarizing…"
+            echo "$AC_KEY_P8_BASE64" | base64 --decode > "$RUNNER_TEMP/ac_key.p8"
+            xcrun notarytool submit MobGrind-macOS.zip \
+              --key "$RUNNER_TEMP/ac_key.p8" --key-id "$AC_KEY_ID" --issuer "$AC_ISSUER_ID" --wait
+            xcrun stapler staple dist/MobGrind.app      # staple the ticket into the .app
+            rm MobGrind-macOS.zip
+            ditto -c -k --keepParent dist/MobGrind.app MobGrind-macOS.zip   # re-zip stapled app
+          else
+            echo "No App Store Connect key — skipping notarization."
+          fi
+
+      # ---------------- Windows: build, sign with a .pfx certificate ----------------
+      - name: Build & sign Windows .exe
         if: runner.os == 'Windows'
+        env:
+          WIN_PFX_BASE64: ${{ secrets.WINDOWS_CERT_PFX_BASE64 }}
+          WIN_PFX_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        shell: pwsh
         run: |
           pyinstaller --noconfirm --name MobGrind --windowed --onefile `
             --hidden-import pynput.keyboard._win32 --hidden-import pynput.mouse._win32 `
             mobgrind_app.py
+
+          if ($env:WIN_PFX_BASE64) {
+            Write-Host "Signing .exe…"
+            [IO.File]::WriteAllBytes("$env:RUNNER_TEMP\cert.pfx", [Convert]::FromBase64String($env:WIN_PFX_BASE64))
+            $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" |
+                        Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
+            & $signtool sign /fd SHA256 /f "$env:RUNNER_TEMP\cert.pfx" /p $env:WIN_PFX_PASSWORD `
+              /tr http://timestamp.digicert.com /td SHA256 dist\MobGrind.exe
+            & $signtool verify /pa dist\MobGrind.exe
+          } else {
+            Write-Host "No Windows signing secret — producing an UNSIGNED build."
+          }
+
           Copy-Item dist/MobGrind.exe MobGrind-Windows.exe
 
       - name: Attach to Release
