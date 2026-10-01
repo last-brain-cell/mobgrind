@@ -1,25 +1,33 @@
 #!/usr/bin/env python3
 """MobGrind — cross-platform system-tray app for the AFK mob-farm macro.
 
-Shows a tray icon (macOS menu bar / Windows notification area) with
-Start/Stop, Pause, Calibrate and Quit. The macro itself lives in mobgrind.py;
-this is only the UI, so it runs the same on Mac and Windows.
+Shows a tray icon (macOS menu bar / Windows notification area) with a live
+status line plus Start/Stop, Pause, Calibrate, Settings and Quit. The macro
+itself lives in mobgrind.py; this is only the UI, so it runs the same on Mac
+and Windows.
+
+THREADING RULE (important): the macro and calibration run on background
+threads, and AppKit (the macOS menu/icon) is main-thread-only — touching it
+from a worker thread hard-crashes on modern macOS. So worker threads NEVER call
+self.icon.* . They set plain attributes; the menu's dynamic labels (re-read on
+open, on the main thread) show state, and notifications go through the OS
+(osascript on macOS), which is safe from any thread.
 
 Run from source:  pip install pystray pillow pyautogui pynput
                   python3 mobgrind_app.py
 
-Build a downloadable binary (must build ON the OS you target — PyInstaller
-is not a cross-compiler):
+Build a downloadable binary (must build ON the OS you target):
   pip install pyinstaller
-  macOS:    pyinstaller --name MobGrind --windowed --onedir \\
+  macOS:    pyinstaller --name MobGrind --windowed --onedir --icon assets/icon.icns \\
               --hidden-import pynput.keyboard._darwin \\
               --hidden-import pynput.mouse._darwin mobgrind_app.py
-            # result: dist/MobGrind.app  (zip it, or make a .dmg with hdiutil)
-  Windows:  pyinstaller --name MobGrind --windowed --onefile \\
+  Windows:  pyinstaller --name MobGrind --windowed --onefile --icon assets/icon.ico \\
               --hidden-import pynput.keyboard._win32 \\
               --hidden-import pynput.mouse._win32 mobgrind_app.py
-            # result: dist\\MobGrind.exe
 """
+import json
+import subprocess
+import sys
 import threading
 import time
 
@@ -29,25 +37,23 @@ import pystray
 import mobgrind as engine
 from mobgrind_icon import sword_icon
 
-IDLE, RUNNING, PAUSED, BUSY = (150, 158, 170), (70, 210, 100), (235, 178, 55), (80, 160, 235)
-
-
-def make_icon(color):
-    """The shared sword glyph, tinted by state for the tray."""
-    return sword_icon(64, color)
+ICON_COLOR = (160, 170, 185)   # one static tint — recoloring needs the main thread, see note above
 
 
 class MobGrindApp:
     def __init__(self):
         self.running = False
         self.paused = False
-        self.busy = False  # calibrating
+        self.busy = False       # calibrating
+        self.status = "Idle"
         engine.load_settings()
         self.icon = pystray.Icon(
             "mobgrind",
-            icon=make_icon(IDLE),
+            icon=sword_icon(64, ICON_COLOR),
             title="MobGrind",
             menu=pystray.Menu(
+                pystray.MenuItem(lambda i: f"●  {self.status}", None, enabled=False),
+                pystray.Menu.SEPARATOR,
                 pystray.MenuItem(lambda i: "Stop" if self.running else "Start",
                                  self.on_start, default=True),
                 pystray.MenuItem(lambda i: "Resume" if self.paused else "Pause",
@@ -66,7 +72,7 @@ class MobGrindApp:
         def choices(attr, options):
             def item(label, val):
                 def action(icon, it):
-                    self._set(attr, val)
+                    engine.set_value(attr, val)
                 def checked(it):
                     return getattr(engine, attr) == val
                 return pystray.MenuItem(label, action, checked=checked, radio=True)
@@ -84,60 +90,58 @@ class MobGrindApp:
             pystray.MenuItem("Eat sensitivity", choices("HUNGER_DISTANCE",
                 [("Low", 80), ("Medium", 60), ("High", 40)])),
             pystray.MenuItem("Reverse sword scroll",
-                             lambda icon, it: self._set("SCROLL_DIR", -engine.SCROLL_DIR),
+                             lambda icon, it: engine.set_value("SCROLL_DIR", -engine.SCROLL_DIR),
                              checked=lambda it: engine.SCROLL_DIR == 1),
         )
 
-    def _set(self, attr, value):
-        engine.set_value(attr, value)
-        self.icon.update_menu()
-
-    # --- helpers ---
+    # --- status: safe from any thread (no AppKit) ---
     def notify(self, msg):
+        self.status = msg
         try:
-            self.icon.notify(msg, "MobGrind")
+            if sys.platform == "darwin":
+                subprocess.Popen(
+                    ["osascript", "-e", f"display notification {json.dumps(msg)} with title \"MobGrind\""])
+            else:
+                self.icon.notify(msg, "MobGrind")   # Windows/Linux balloon (best effort)
         except Exception:
-            pass  # notifications aren't guaranteed on every backend
-        self.icon.title = f"MobGrind — {msg}"
+            pass
 
-    def refresh(self):
-        color = BUSY if self.busy else PAUSED if self.paused else RUNNING if self.running else IDLE
-        self.icon.icon = make_icon(color)
-        self.icon.update_menu()
-
-    # --- menu actions (run on the backend's thread) ---
+    # --- menu actions (invoked by AppKit on the main thread) ---
     def on_start(self, icon, item):
         if self.busy:
             return
         if not self.running:
             self.running = True
             self.paused = False
-            self.refresh()
             self.notify(f"Starting in {engine.START_DELAY:.0f}s — focus the game")
             threading.Thread(target=self._run, daemon=True).start()
         else:
-            self.running = False  # the loop checks this and exits
+            self.running = False            # the loop checks this and exits
+            self.status = "Stopping…"
 
     def on_pause(self, icon, item):
         self.paused = not self.paused
-        self.refresh()
+        self.status = "Paused" if self.paused else "Running"
 
     def on_calibrate(self, icon, item):
         if self.busy or self.running:
             return
+        self.busy = True
         threading.Thread(target=self._calibrate, daemon=True).start()
 
     def on_quit(self, icon, item):
         self.running = False
         self.icon.stop()
 
-    # --- worker threads ---
+    # --- worker threads: NEVER touch self.icon.* (see threading rule above) ---
     def _run(self):
         try:
             time.sleep(engine.START_DELAY)
             calib = engine.load_calib()
             if not calib:
                 self.notify("No calibration — eating on a timer, no death detection.")
+            else:
+                self.status = "Running"
             clicks, meals, mins = engine.run(
                 calib,
                 stop=lambda: not self.running,
@@ -150,11 +154,8 @@ class MobGrindApp:
         finally:
             self.running = False
             self.paused = False
-            self.refresh()
 
     def _calibrate(self):
-        self.busy = True
-        self.refresh()
         try:
             self.notify("Hover the LEFTMOST hunger haunch — capturing in 5s")
             time.sleep(5)
@@ -169,7 +170,6 @@ class MobGrindApp:
             self.notify(f"Calibration failed: {e}")
         finally:
             self.busy = False
-            self.refresh()
 
     def run(self):
         self.icon.run()
