@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""AFK XP farm macro for a Minecraft spider spawner, with a vision layer.
+"""MobGrind — AFK XP-farm macro for a Minecraft mob spawner, with a vision layer.
 
-Loop: every ~CLICK_EVERY seconds (with jitter) it left-clicks (attack) then
-scrolls one hotbar slot, so your 9 swords rotate and wear evenly. It watches the
-screen so it's not just a stopwatch:
+Works for any spawner you can AFK on (spiders, zombies, skeletons, …). Every
+~CLICK_EVERY seconds (with jitter) it left-clicks (attack) then scrolls one
+hotbar slot, so your 9 swords rotate and wear evenly. It watches the screen so
+it's not just a stopwatch:
   * eats only when your hunger bar actually drops (not on a fixed timer)
   * detects the death screen and stops, so a bad session doesn't run for hours
 
@@ -11,8 +12,8 @@ Setup (macOS):
   1. pip install pyautogui pynput
   2. System Settings > Privacy & Security > Accessibility: allow your terminal
      AND, separately, Screen Recording (needed to read pixels).
-  3. Calibrate once:  python3 spider_afk.py --calibrate
-  4. Run:             python3 spider_afk.py
+  3. Calibrate once:  python3 mobgrind.py --calibrate
+  4. Run:             python3 mobgrind.py
 
 Hotkeys while running:  F8 = pause/resume   F9 = quit
 (F8/F9 are used because Minecraft doesn't bind them — letter keys would leak
@@ -26,7 +27,7 @@ import time
 
 import pyautogui
 
-CALIB_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "spider_afk_calib.json")
+CALIB_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mobgrind_calib.json")
 
 # --- tuning knobs ---
 CLICK_EVERY = 6.0        # base seconds between attacks
@@ -81,7 +82,7 @@ def calibrate():
     cx, cy = pyautogui.position()
 
     save_calib([hx, hy], hcolor, [cx, cy])
-    print(f"\nSaved to {CALIB_FILE}. Now run: python3 spider_afk.py")
+    print(f"\nSaved to {CALIB_FILE}. Now run: python3 mobgrind.py")
 
 
 def save_calib(hunger_xy, hunger_full, center_xy):
@@ -122,7 +123,7 @@ def is_hungry(calib):
 def run(calib, stop, paused, log=print):
     """Core macro loop. stop() and paused() are callables; log(msg) reports events.
 
-    Returns (clicks, meals, minutes). Shared by the CLI and the menu-bar app so the
+    Returns (clicks, meals, minutes). Shared by the CLI and the tray app so the
     attack/eat/death logic lives in exactly one place.
     """
     import random
@@ -183,7 +184,7 @@ def main():
     calib = load_calib()
     if not calib:
         print("No calibration found — eating on a timer and skipping death detection.")
-        print("Run `python3 spider_afk.py --calibrate` for the smart version.\n")
+        print("Run `python3 mobgrind.py --calibrate` for the smart version.\n")
 
     start_hotkeys()
     print(f"Starting in {START_DELAY:.0f}s — click into Minecraft. F8 pause, F9 quit.")

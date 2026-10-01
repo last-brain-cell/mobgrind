@@ -3,5 +3,6 @@ __pycache__/
 build/
 dist/
 *.spec
-spider_afk_calib.json
+mobgrind_calib.json
 .venv/
+.idea/

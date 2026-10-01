@@ -26,23 +26,23 @@ jobs:
       - name: Build macOS .app
         if: runner.os == 'macOS'
         run: |
-          pyinstaller --noconfirm --name SpiderAFK --windowed --onedir \
+          pyinstaller --noconfirm --name MobGrind --windowed --onedir \
             --hidden-import pynput.keyboard._darwin --hidden-import pynput.mouse._darwin \
-            spider_afk_app.py
-          ditto -c -k --keepParent dist/SpiderAFK.app SpiderAFK-macOS.zip
+            mobgrind_app.py
+          ditto -c -k --keepParent dist/MobGrind.app MobGrind-macOS.zip
 
       - name: Build Windows .exe
         if: runner.os == 'Windows'
         run: |
-          pyinstaller --noconfirm --name SpiderAFK --windowed --onefile `
+          pyinstaller --noconfirm --name MobGrind --windowed --onefile `
             --hidden-import pynput.keyboard._win32 --hidden-import pynput.mouse._win32 `
-            spider_afk_app.py
-          Copy-Item dist/SpiderAFK.exe SpiderAFK-Windows.exe
+            mobgrind_app.py
+          Copy-Item dist/MobGrind.exe MobGrind-Windows.exe
 
       - name: Attach to Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            SpiderAFK-macOS.zip
-            SpiderAFK-Windows.exe
+            MobGrind-macOS.zip
+            MobGrind-Windows.exe

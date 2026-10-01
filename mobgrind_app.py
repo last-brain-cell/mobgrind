@@ -1,24 +1,24 @@
 #!/usr/bin/env python3
-"""Cross-platform system-tray app for the spider AFK macro.
+"""MobGrind — cross-platform system-tray app for the AFK mob-farm macro.
 
 Shows a tray icon (macOS menu bar / Windows notification area) with
-Start/Stop, Pause, Calibrate and Quit. The macro itself lives in
-spider_afk.py; this is only the UI, so it runs the same on Mac and Windows.
+Start/Stop, Pause, Calibrate and Quit. The macro itself lives in mobgrind.py;
+this is only the UI, so it runs the same on Mac and Windows.
 
 Run from source:  pip install pystray pillow pyautogui pynput
-                  python3 spider_afk_app.py
+                  python3 mobgrind_app.py
 
 Build a downloadable binary (must build ON the OS you target — PyInstaller
 is not a cross-compiler):
   pip install pyinstaller
-  macOS:    pyinstaller --name SpiderAFK --windowed --onedir \\
+  macOS:    pyinstaller --name MobGrind --windowed --onedir \\
               --hidden-import pynput.keyboard._darwin \\
-              --hidden-import pynput.mouse._darwin spider_afk_app.py
-            # result: dist/SpiderAFK.app  (zip it, or make a .dmg with hdiutil)
-  Windows:  pyinstaller --name SpiderAFK --windowed --onefile \\
+              --hidden-import pynput.mouse._darwin mobgrind_app.py
+            # result: dist/MobGrind.app  (zip it, or make a .dmg with hdiutil)
+  Windows:  pyinstaller --name MobGrind --windowed --onefile \\
               --hidden-import pynput.keyboard._win32 \\
-              --hidden-import pynput.mouse._win32 spider_afk_app.py
-            # result: dist\\SpiderAFK.exe
+              --hidden-import pynput.mouse._win32 mobgrind_app.py
+            # result: dist\\MobGrind.exe
 """
 import threading
 import time
@@ -27,33 +27,30 @@ import pyautogui
 import pystray
 from PIL import Image, ImageDraw
 
-import spider_afk as engine
+import mobgrind as engine
 
 IDLE, RUNNING, PAUSED, BUSY = (120, 120, 120), (60, 200, 90), (230, 170, 40), (70, 150, 230)
 
 
 def make_icon(color):
-    """A simple spider-ish glyph: round body + eight little legs, tinted by state."""
+    """A simple sword glyph (mob-agnostic), tinted by state."""
     img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
-    for sx in (-1, 1):
-        for i in range(4):
-            y = 20 + i * 8
-            d.line((32, 34, 32 + sx * 26, y), fill=color, width=3)
-    d.ellipse((22, 18, 42, 38), fill=color)   # head/body
-    d.ellipse((24, 36, 40, 56), fill=color)   # abdomen
+    d.line((16, 48, 46, 18), fill=color, width=6)          # blade (bottom-left -> top-right)
+    d.line((12, 40, 24, 52), fill=color, width=5)          # crossguard
+    d.line((12, 52, 20, 52), fill=color, width=5)          # pommel
     return img
 
 
-class AFKApp:
+class MobGrindApp:
     def __init__(self):
         self.running = False
         self.paused = False
         self.busy = False  # calibrating
         self.icon = pystray.Icon(
-            "spider_afk",
+            "mobgrind",
             icon=make_icon(IDLE),
-            title="Spider AFK",
+            title="MobGrind",
             menu=pystray.Menu(
                 pystray.MenuItem(lambda i: "Stop" if self.running else "Start",
                                  self.on_start, default=True),
@@ -69,10 +66,10 @@ class AFKApp:
     # --- helpers ---
     def notify(self, msg):
         try:
-            self.icon.notify(msg, "Spider AFK")
+            self.icon.notify(msg, "MobGrind")
         except Exception:
             pass  # notifications aren't guaranteed on every backend
-        self.icon.title = f"Spider AFK — {msg}"
+        self.icon.title = f"MobGrind — {msg}"
 
     def refresh(self):
         color = BUSY if self.busy else PAUSED if self.paused else RUNNING if self.running else IDLE
@@ -150,4 +147,4 @@ class AFKApp:
 
 
 if __name__ == "__main__":
-    AFKApp().run()
+    MobGrindApp().run()
