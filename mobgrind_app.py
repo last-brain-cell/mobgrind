@@ -25,21 +25,16 @@ import time
 
 import pyautogui
 import pystray
-from PIL import Image, ImageDraw
 
 import mobgrind as engine
+from mobgrind_icon import sword_icon
 
-IDLE, RUNNING, PAUSED, BUSY = (120, 120, 120), (60, 200, 90), (230, 170, 40), (70, 150, 230)
+IDLE, RUNNING, PAUSED, BUSY = (150, 158, 170), (70, 210, 100), (235, 178, 55), (80, 160, 235)
 
 
 def make_icon(color):
-    """A simple sword glyph (mob-agnostic), tinted by state."""
-    img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    d.line((16, 48, 46, 18), fill=color, width=6)          # blade (bottom-left -> top-right)
-    d.line((12, 40, 24, 52), fill=color, width=5)          # crossguard
-    d.line((12, 52, 20, 52), fill=color, width=5)          # pommel
-    return img
+    """The shared sword glyph, tinted by state for the tray."""
+    return sword_icon(64, color)
 
 
 class MobGrindApp:

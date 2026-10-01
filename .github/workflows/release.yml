@@ -39,6 +39,7 @@ jobs:
         run: |
           set -euo pipefail
           pyinstaller --noconfirm --name MobGrind --windowed --onedir \
+            --icon assets/icon.icns \
             --hidden-import pynput.keyboard._darwin --hidden-import pynput.mouse._darwin \
             mobgrind_app.py
 
@@ -93,6 +94,7 @@ jobs:
         shell: pwsh
         run: |
           pyinstaller --noconfirm --name MobGrind --windowed --onefile `
+            --icon assets/icon.ico `
             --hidden-import pynput.keyboard._win32 --hidden-import pynput.mouse._win32 `
             mobgrind_app.py
 
